@@ -91,7 +91,7 @@ def check_data_drift(reference_data: pd.DataFrame, production_data: pd.DataFrame
             except Exception:
                 pass
 
-    dataset_drift = bool(n_drifted > (len(drift_results) * 0.3))
+    dataset_drift = bool(n_drifted > (len(drift_results) * 0.15))
     return {
         "features_tested": len(drift_results),
         "features_drifted": n_drifted,
