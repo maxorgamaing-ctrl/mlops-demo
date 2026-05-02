@@ -1,0 +1,114 @@
+name: Drift Monitor — Daily Check + Auto Retrain
+
+# Runs every day at 02:00 UTC (scheduled)
+# Can also be triggered manually from GitHub Actions UI
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      simulate_drift:
+        description: "Inject simulated drift for demo (true/false)"
+        required: false
+        default: "false"
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: churn-mlops
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── Generate + preprocess fresh reference data ─────────────────────────
+      - name: Generate reference dataset
+        run: python scripts/generate_dataset.py
+
+      - name: Preprocess reference data
+        run: python src/data_preprocessing.py
+
+      # ── Train model to get baseline metrics/scores.json ───────────────────
+      - name: Train model (fast mode to get baseline metrics)
+        run: python src/train.py --fast-mode
+
+      # ── Optionally inject simulated drift for demo purposes ────────────────
+      - name: Inject simulated data + concept drift (demo mode)
+        if: ${{ github.event.inputs.simulate_drift == 'true' }}
+        run: |
+          python - <<'EOF'
+          import pandas as pd, numpy as np, os
+          df = pd.read_csv("data/processed/train.csv").sample(500, random_state=1).copy()
+          # DATA DRIFT: shift numeric distributions significantly
+          df["monthlycharges"] = df["monthlycharges"] * 2.5
+          df["totalcharges"]   = df["totalcharges"]   * 2.5
+          df["tenure"]         = (df["tenure"] * 0.3).astype(int)
+          df["contract"]       = "Month-to-month"
+          # CONCEPT DRIFT: flip 40% of labels so model accuracy degrades
+          flip_idx = df.sample(frac=0.4, random_state=7).index
+          df.loc[flip_idx, "churn"] = 1 - df.loc[flip_idx, "churn"]
+          os.makedirs("data/production", exist_ok=True)
+          df.to_csv("data/production/recent_predictions.csv", index=False)
+          print("Drift injected into data/production/recent_predictions.csv")
+          EOF
+
+      # ── Run full drift check ───────────────────────────────────────────────
+      - name: Run drift detection (data + concept)
+        id: drift
+        run: |
+          cd churn-mlops 2>/dev/null || true
+          REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
+          echo "report=$REPORT" >> $GITHUB_OUTPUT
+          DATA_DRIFT=$(echo $REPORT    | python -c "import sys,json; print(json.load(sys.stdin).get('dataset_drift', False))")
+          CONCEPT_DRIFT=$(echo $REPORT | python -c "import sys,json; print(json.load(sys.stdin).get('concept_drift', False))")
+          RETRAIN=$(echo $REPORT       | python -c "import sys,json; print(json.load(sys.stdin).get('retrain_triggered', False))")
+          echo "data_drift=$DATA_DRIFT"       >> $GITHUB_OUTPUT
+          echo "concept_drift=$CONCEPT_DRIFT" >> $GITHUB_OUTPUT
+          echo "retrain=$RETRAIN"             >> $GITHUB_OUTPUT
+          echo "DATA_DRIFT=$DATA_DRIFT CONCEPT_DRIFT=$CONCEPT_DRIFT RETRAIN=$RETRAIN"
+
+      # ── Upload drift report as artifact ───────────────────────────────────
+      - name: Upload drift report
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report-${{ github.run_id }}
+          path: reports/drift_report_*.json
+
+      # ── Trigger retraining pipeline if drift detected ─────────────────────
+      - name: Trigger retrain workflow (if drift detected)
+        if: ${{ steps.drift.outputs.retrain == 'True' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              workflow_id: 'retrain.yml',
+              ref: 'main',
+              inputs: {
+                reason: 'auto-triggered by drift monitor',
+                data_drift:    '${{ steps.drift.outputs.data_drift }}',
+                concept_drift: '${{ steps.drift.outputs.concept_drift }}',
+              }
+            });
+            console.log('Retrain workflow triggered');
+
+      # ── Post summary to GitHub Actions job summary ─────────────────────────
+      - name: Write job summary
+        run: |
+          echo "## Drift Monitor Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Data Drift    | ${{ steps.drift.outputs.data_drift }} |"    >> $GITHUB_STEP_SUMMARY
+          echo "| Concept Drift | ${{ steps.drift.outputs.concept_drift }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Retrain Triggered | **${{ steps.drift.outputs.retrain }}** |" >> $GITHUB_STEP_SUMMARY

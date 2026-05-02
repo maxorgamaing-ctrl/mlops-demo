@@ -1,0 +1,102 @@
+name: Retrain — Full Pipeline on Drift
+
+# Triggered automatically by drift_monitor.yml OR manually from the UI
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why retrain is being triggered"
+        required: false
+        default: "manual"
+      data_drift:
+        description: "Was data drift detected? (true/false)"
+        required: false
+        default: "unknown"
+      concept_drift:
+        description: "Was concept drift detected? (true/false)"
+        required: false
+        default: "unknown"
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: churn-mlops
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── Log why retrain was triggered ─────────────────────────────────────
+      - name: Log trigger reason
+        run: |
+          echo "Retrain triggered: ${{ github.event.inputs.reason }}"
+          echo "Data drift:        ${{ github.event.inputs.data_drift }}"
+          echo "Concept drift:     ${{ github.event.inputs.concept_drift }}"
+
+      # ── Step 1: Generate fresh training data ──────────────────────────────
+      - name: Generate dataset
+        run: python scripts/generate_dataset.py
+
+      # ── Step 2: Preprocess ────────────────────────────────────────────────
+      - name: Preprocess data
+        run: python src/data_preprocessing.py
+
+      # ── Step 3: Retrain model with MLflow tracking ────────────────────────
+      - name: Retrain model
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: python src/train.py
+
+      # ── Step 4: Quality gate — must beat AUC >= 0.82 ─────────────────────
+      - name: Evaluate quality gates
+        run: python src/evaluate.py
+
+      # ── Step 5: Run tests against the new model ───────────────────────────
+      - name: Run test suite
+        run: python -m pytest tests/ -v
+
+      # ── Step 6: Upload model artifact ─────────────────────────────────────
+      - name: Upload trained model
+        uses: actions/upload-artifact@v4
+        with:
+          name: churn-model-${{ github.run_id }}
+          path: |
+            models/churn_model.pkl
+            metrics/scores.json
+
+      # ── Step 7: Promote model and trigger CD ──────────────────────────────
+      - name: Promote model + trigger deployment
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: python scripts/promote_model.py --stage Production
+
+      - name: Trigger CD deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              workflow_id: 'cd.yml',
+              ref: 'main',
+            });
+            console.log('CD workflow triggered');
+
+      # ── Write job summary ──────────────────────────────────────────────────
+      - name: Write job summary
+        run: |
+          SCORES=$(cat metrics/scores.json)
+          echo "## Retrain Results" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json"         >> $GITHUB_STEP_SUMMARY
+          echo "$SCORES"            >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`"             >> $GITHUB_STEP_SUMMARY
+          echo "Triggered by: ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
