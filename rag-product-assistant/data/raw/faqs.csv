@@ -1,0 +1,10 @@
+product_id,question,answer
+prod_001,Does the AX6000 router work with DOCSIS 3.1 modems?,Yes the AX6000 is compatible with all DOCSIS 3.0 and 3.1 modems.
+prod_001,How many devices can connect to the AX6000 at once?,Up to 200 devices can connect simultaneously using OFDMA technology.
+prod_001,What WiFi security does the AX6000 support?,The AX6000 supports WPA3 and WPA2 security protocols.
+prod_002,Can I upgrade RAM in the ProBook X14?,No the 16GB LPDDR5 RAM is soldered onto the motherboard and cannot be upgraded.
+prod_002,How long does the ProBook X14 battery last?,The ProBook X14 offers up to 12 hours of battery life.
+prod_002,Does the ProBook X14 support dual monitors?,Yes via the HDMI 2.0 port and USB-C Thunderbolt 4 port simultaneously.
+prod_003,Do I need a 4K TV to use the SmartHub streaming device?,No it works with any HDMI TV. 4K content requires a 4K-compatible TV.
+prod_003,Does the SmartHub streaming device work without internet?,No a WiFi connection is required for streaming content.
+prod_003,What HDR formats does the SmartHub support?,"The SmartHub supports Dolby Vision, HDR10+, and HLG."

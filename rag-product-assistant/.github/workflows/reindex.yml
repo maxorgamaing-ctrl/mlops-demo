@@ -1,0 +1,47 @@
+name: Re-index Knowledge Base
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/raw/product_catalog.json'
+      - 'data/raw/faqs.csv'
+      - 'data/raw/manuals/**'
+
+jobs:
+  reindex:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ingestion pipeline (production)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+        run: python ingestion/indexer.py --env production
+
+      - name: Run retrieval quality smoke test
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python evaluation/evaluate_rag.py --quick-mode
+
+      - name: Tag knowledge base version in DVC
+        run: |
+          dvc add data/raw/
+          dvc push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/raw/.gitignore data/raw.dvc
+          git commit -m "chore: update knowledge base index [skip ci]" || echo "Nothing to commit"
+          git tag kb-$(date +%Y%m%d-%H%M%S)
+          git push --follow-tags

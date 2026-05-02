@@ -1,0 +1,45 @@
+vector_db:
+  # Use "chroma" for local dev, "qdrant" for production
+  backend: chroma
+  chroma_persist_dir: ./vector_store/chroma
+  qdrant_url: http://localhost:6333
+  collection_name: product_knowledge_base
+
+embeddings:
+  # Local sentence-transformers model — no API key needed
+  local_model: all-MiniLM-L6-v2
+  batch_size: 100
+
+chunking:
+  chunk_size: 512
+  chunk_overlap: 64
+
+retrieval:
+  dense_k: 10
+  dense_fetch_k: 30
+  sparse_k: 10
+  ensemble_weights:
+    dense: 0.6
+    sparse: 0.4
+
+generation:
+  # Ollama model — change to any model shown by `ollama list`
+  model: gpt-oss:20b-cloud
+  temperature: 0
+  prompt_path: generation/prompts/qa_prompt_v2.txt
+  max_tokens: 1024
+  ollama_base_url: http://localhost:11434
+
+quality_gate:
+  min_faithfulness: 0.85
+  min_answer_relevancy: 0.80
+  min_context_precision: 0.75
+
+monitoring:
+  langsmith_project: product-assistant-prod
+  max_latency_seconds: 3.0
+  max_error_rate: 0.05
+
+serving:
+  title: Product Knowledge Assistant API
+  version: 1.0.0

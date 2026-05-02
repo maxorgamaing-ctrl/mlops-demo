@@ -1,0 +1,54 @@
+# Hyperparameters and thresholds for the churn prediction model
+
+model:
+  type: XGBoost
+  n_estimators: 200
+  max_depth: 6
+  learning_rate: 0.1
+  subsample: 0.8
+  colsample_bytree: 0.8
+  scale_pos_weight: 3       # handles class imbalance (~15% churn rate)
+  random_state: 42
+
+preprocessing:
+  test_size: 0.2
+  random_state: 42
+  numeric_features:
+    - tenure
+    - monthlycharges
+    - totalcharges
+  categorical_features:
+    - contract
+    - internetservice
+    - paymentmethod
+    - phoneservice
+    - multiplelines
+    - onlinesecurity
+    - onlinebackup
+    - deviceprotection
+    - techsupport
+    - streamingtv
+    - streamingmovies
+    - paperlessbilling
+    - gender
+    - seniorcitizen
+    - partner
+    - dependents
+
+quality_gate:
+  min_auc_roc: 0.82
+  min_f1: 0.60
+  min_precision: 0.55
+  min_recall: 0.65
+
+serving:
+  churn_threshold: 0.5
+  high_risk_threshold: 0.7
+  low_risk_threshold: 0.4
+  model_name: churn-model-prod
+  model_stage: Production
+
+monitoring:
+  drift_alert_threshold: 0.05     # p-value threshold for data drift (KS / chi-squared)
+  concept_drift_auc_drop: 0.05    # concept drift: retrain if AUC drops by more than this vs baseline
+  report_output_dir: reports/

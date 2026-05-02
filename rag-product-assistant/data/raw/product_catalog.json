@@ -1,0 +1,65 @@
+[
+  {
+    "id": "prod_001",
+    "name": "AX6000 WiFi 6 Router",
+    "category": "Networking",
+    "description": "Tri-band WiFi 6 router with 6000 Mbps combined speed. Supports up to 200 devices simultaneously. Equipped with OFDMA and MU-MIMO technology. Compatible with all ISPs and modem types including DOCSIS 3.0 and 3.1.",
+    "specs": {
+      "wifi_standard": "WiFi 6 (802.11ax)",
+      "bands": "Tri-band (2.4GHz + 5GHz + 5GHz)",
+      "max_speed_mbps": 6000,
+      "ports": "1x WAN, 4x Gigabit LAN, 2x USB 3.0",
+      "security": "WPA3, WPA2",
+      "dimensions_cm": "26.8 x 16.3 x 3.8"
+    },
+    "compatibility": ["DOCSIS 3.0 modems", "DOCSIS 3.1 modems", "All major ISPs"],
+    "price_usd": 279.99,
+    "faqs": [
+      {"q": "Does this router work with Xfinity modems?", "a": "Yes, it is compatible with all DOCSIS 3.0 and 3.1 modems used by Xfinity."},
+      {"q": "How many devices can connect simultaneously?", "a": "Up to 200 devices can connect simultaneously using OFDMA technology."}
+    ]
+  },
+  {
+    "id": "prod_002",
+    "name": "ProBook X14 Laptop",
+    "category": "Laptops",
+    "description": "Business ultrabook with Intel Core i7-1355U processor, 16GB LPDDR5 RAM, 512GB NVMe SSD. Features a 14-inch IPS display with 2560x1600 resolution and up to 12 hours battery life. Weighs 1.4kg.",
+    "specs": {
+      "processor": "Intel Core i7-1355U",
+      "ram_gb": 16,
+      "storage_gb": 512,
+      "storage_type": "NVMe SSD",
+      "display_inches": 14,
+      "display_resolution": "2560x1600",
+      "battery_hours": 12,
+      "weight_kg": 1.4,
+      "os": "Windows 11 Pro"
+    },
+    "compatibility": ["USB-C chargers (65W+)", "Thunderbolt 4 docks", "HDMI 2.0 monitors"],
+    "price_usd": 1099.99,
+    "faqs": [
+      {"q": "Can I upgrade the RAM?", "a": "No, the 16GB LPDDR5 RAM is soldered and cannot be upgraded."},
+      {"q": "Does it support dual monitors?", "a": "Yes, via the HDMI 2.0 port and USB-C Thunderbolt 4 port simultaneously."}
+    ]
+  },
+  {
+    "id": "prod_003",
+    "name": "SmartHub 4K Streaming Device",
+    "category": "Streaming",
+    "description": "4K HDR streaming stick with Dolby Vision, HDR10+ support. Includes voice remote with Alexa built-in. Supports Netflix, Prime Video, Disney+, YouTube. Requires HDMI 2.0 port and 5GHz WiFi for 4K streaming.",
+    "specs": {
+      "resolution": "4K Ultra HD",
+      "hdr_support": ["Dolby Vision", "HDR10+", "HLG"],
+      "connectivity": "WiFi 6, Bluetooth 5.0",
+      "ports": "HDMI 2.0 (male connector)",
+      "power": "USB-C (adapter included)",
+      "voice_assistant": "Alexa built-in"
+    },
+    "compatibility": ["HDMI 2.0 TVs", "5GHz WiFi routers for 4K", "USB-A power ports (with adapter)"],
+    "price_usd": 49.99,
+    "faqs": [
+      {"q": "Do I need a 4K TV to use this device?", "a": "No, it works with any HDMI TV. 4K content requires a 4K-compatible TV."},
+      {"q": "Does it work without internet?", "a": "A WiFi connection is required for streaming content."}
+    ]
+  }
+]

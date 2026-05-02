@@ -1,0 +1,47 @@
+name: CI — RAG Quality Gate
+
+on: [pull_request]
+
+jobs:
+  rag-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ingestion pipeline (dev mode)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python ingestion/indexer.py --env dev
+
+      - name: Run RAGAS evaluation quality gate
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LANGCHAIN_TRACING_V2: "true"
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+        run: python evaluation/evaluate_rag.py --quick-mode
+
+      - name: Build Docker image
+        run: docker build -t rag-api:test .
+
+      - name: Smoke-test API container
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          docker run -d -p 8000:8000 \
+            -e OPENAI_API_KEY=$OPENAI_API_KEY \
+            -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+            --name rag-api-test rag-api:test
+          sleep 10
+          curl -f http://localhost:8000/health
+          docker stop rag-api-test

@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-05-02T17:36:27.512719",
+  "reference_rows": 5634,
+  "production_rows": 300,
+  "features_tested": 19,
+  "features_drifted": 3,
+  "dataset_drift": false,
+  "feature_results": {
+    "tenure": {
+      "test": "ks_2samp",
+      "statistic": 0.0733,
+      "p_value": 0.0889,
+      "drifted": 

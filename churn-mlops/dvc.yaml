@@ -1,0 +1,30 @@
+stages:
+  preprocess:
+    cmd: python src/data_preprocessing.py
+    deps:
+      - data/raw/telco_churn.csv
+      - src/data_preprocessing.py
+      - config.yaml
+    outs:
+      - data/processed/train.csv
+      - data/processed/test.csv
+
+  train:
+    cmd: python src/train.py
+    deps:
+      - data/processed/train.csv
+      - src/train.py
+      - config.yaml
+    outs:
+      - models/churn_model.pkl
+
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - models/churn_model.pkl
+      - data/processed/test.csv
+      - src/evaluate.py
+      - config.yaml
+    metrics:
+      - metrics/scores.json:
+          cache: false

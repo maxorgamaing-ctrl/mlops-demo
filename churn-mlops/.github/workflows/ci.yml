@@ -1,0 +1,89 @@
+name: CI -- Validate ML Code and Model
+
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── Unit tests ────────────────────────────────────────────────────────
+      - name: Run data validation tests
+        run: python -m pytest tests/test_preprocessing.py -v
+
+      - name: Run API tests
+        run: python -m pytest tests/test_api.py -v
+
+      # ── Full pipeline (fast mode) ─────────────────────────────────────────
+      - name: Generate dataset
+        run: python scripts/generate_dataset.py
+
+      - name: Preprocess data
+        run: python src/data_preprocessing.py
+
+      - name: Train model (fast CI mode -- 500-row subset)
+        run: python src/train.py --fast-mode
+
+      - name: Evaluate -- must beat quality gate (AUC >= 0.82)
+        run: python src/evaluate.py
+
+      # ── Drift monitoring check ─────────────────────────────────────────────
+      - name: Run drift check (no drift expected on fresh data)
+        id: baseline_drift
+        run: |
+          REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
+          RETRAIN=$(echo $REPORT | python -c "import sys,json; print(json.load(sys.stdin).get('retrain_triggered', False))")
+          echo "retrain=$RETRAIN" >> $GITHUB_OUTPUT
+          echo "Baseline drift check: retrain=$RETRAIN"
+
+      - name: Simulate data drift and verify detection
+        run: |
+          python - <<'EOF'
+          import pandas as pd, numpy as np, os
+          df = pd.read_csv("data/processed/train.csv").sample(300, random_state=1).copy()
+          df["monthlycharges"] = df["monthlycharges"] * 2.5
+          df["totalcharges"]   = df["totalcharges"]   * 2.5
+          df["tenure"]         = (df["tenure"] * 0.3).astype(int)
+          os.makedirs("data/production", exist_ok=True)
+          df.to_csv("data/production/recent_predictions.csv", index=False)
+          EOF
+          REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
+          DATA_DRIFT=$(echo $REPORT | python -c "import sys,json; print(json.load(sys.stdin).get('dataset_drift', False))")
+          echo "Simulated drift detected: $DATA_DRIFT"
+          [ "$DATA_DRIFT" = "True" ] || (echo "ERROR: Expected data drift to be detected!" && exit 1)
+
+      - name: Simulate concept drift and verify detection
+        run: |
+          python - <<'EOF'
+          import pandas as pd, numpy as np, os
+          df = pd.read_csv("data/processed/test.csv").sample(400, random_state=7).copy()
+          flip_idx = df.sample(frac=0.4, random_state=7).index
+          df.loc[flip_idx, "churn"] = 1 - df.loc[flip_idx, "churn"]
+          os.makedirs("data/production", exist_ok=True)
+          df.to_csv("data/production/recent_predictions.csv", index=False)
+          EOF
+          REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
+          CONCEPT_DRIFT=$(echo $REPORT | python -c "import sys,json; print(json.load(sys.stdin).get('concept_drift', False))")
+          echo "Concept drift detected: $CONCEPT_DRIFT"
+          [ "$CONCEPT_DRIFT" = "True" ] || (echo "ERROR: Expected concept drift to be detected!" && exit 1)
+
+      # ── Docker build + smoke test ─────────────────────────────────────────
+      - name: Build Docker image
+        run: docker build -t churn-api:test .
+
+      - name: Smoke-test API container
+        run: |
+          docker run -d -p 8000:8000 --name churn-api-test churn-api:test
+          sleep 8
+          curl -f http://localhost:8000/health
+          docker stop churn-api-test

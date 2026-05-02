@@ -1,0 +1,130 @@
+{
+  "timestamp": "2026-05-02T17:52:04.315499",
+  "reference_rows": 5634,
+  "production_rows": 300,
+  "dataset_drift": false,
+  "features_tested": 19,
+  "features_drifted": 3,
+  "feature_results": {
+    "tenure": {
+      "test": "ks_2samp",
+      "statistic": 0.0733,
+      "p_value": 0.0889,
+      "drifted": false
+    },
+    "monthlycharges": {
+      "test": "ks_2samp",
+      "statistic": 0.0865,
+      "p_value": 0.0265,
+      "drifted": true
+    },
+    "totalcharges": {
+      "test": "ks_2samp",
+      "statistic": 0.0477,
+      "p_value": 0.5188,
+      "drifted": false
+    },
+    "contract": {
+      "test": "chi_squared",
+      "statistic": 5.412,
+      "p_value": 0.0668,
+      "drifted": false
+    },
+    "internetservice": {
+      "test": "chi_squared",
+      "statistic": 0.132,
+      "p_value": 0.9361,
+      "drifted": false
+    },
+    "paymentmethod": {
+      "test": "chi_squared",
+      "statistic": 0.1389,
+      "p_value": 0.9868,
+      "drifted": false
+    },
+    "phoneservice": {
+      "test": "chi_squared",
+      "statistic": 3.0394,
+      "p_value": 0.0813,
+      "drifted": false
+    },
+    "multiplelines": {
+      "test": "chi_squared",
+      "statistic": 3.8461,
+      "p_value": 0.1462,
+      "drifted": false
+    },
+    "onlinesecurity": {
+      "test": "chi_squared",
+      "statistic": 2.0353,
+      "p_value": 0.3614,
+      "drifted": false
+    },
+    "onlinebackup": {
+      "test": "chi_squared",
+      "statistic": 2.4006,
+      "p_value": 0.3011,
+      "drifted": false
+    },
+    "deviceprotection": {
+      "test": "chi_squared",
+      "statistic": 7.5986,
+      "p_value": 0.0224,
+      "drifted": true
+    },
+    "techsupport": {
+      "test": "chi_squared",
+      "statistic": 1.5209,
+      "p_value": 0.4675,
+      "drifted": false
+    },
+    "streamingtv": {
+      "test": "chi_squared",
+      "statistic": 5.7387,
+      "p_value": 0.0567,
+      "drifted": false
+    },
+    "streamingmovies": {
+      "test": "chi_squared",
+      "statistic": 0.0733,
+      "p_value": 0.964,
+      "drifted": false
+    },
+    "paperlessbilling": {
+      "test": "chi_squared",
+      "statistic": 1.3249,
+      "p_value": 0.2497,
+      "drifted": false
+    },
+    "gender": {
+      "test": "chi_squared",
+      "statistic": 4.269,
+      "p_value": 0.0388,
+      "drifted": true
+    },
+    "seniorcitizen": {
+      "test": "chi_squared",
+      "statistic": 0.0321,
+      "p_value": 0.8579,
+      "drifted": false
+    },
+    "partner": {
+      "test": "chi_squared",
+      "statistic": 2.2117,
+      "p_value": 0.137,
+      "drifted": false
+    },
+    "dependents": {
+      "test": "chi_squared",
+      "statistic": 2.0535,
+      "p_value": 0.1519,
+      "drifted": false
+    }
+  },
+  "concept_drift": false,
+  "concept_drift_reason": "AUC dropped 0.0043 (baseline=0.9893, current=0.9850, threshold=0.05)",
+  "current_auc": 0.985,
+  "baseline_auc": 0.9893,
+  "auc_drop": 0.0043,
+  "retrain_triggered": false
+}
