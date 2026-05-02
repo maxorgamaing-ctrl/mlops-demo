@@ -98,7 +98,13 @@ jobs:
       - name: Smoke-test API container
         run: |
           docker run -d -p 8000:8000 --name churn-api-test churn-api:test
-          sleep 8
+          echo "Waiting for API to be ready..."
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:8000/health && echo "API is up!" && break
+            echo "Attempt $i/15 failed, retrying in 2s..."
+            sleep 2
+          done
           curl -f http://localhost:8000/health
+          docker logs churn-api-test
           docker stop churn-api-test
         working-directory: churn-mlops
