@@ -45,7 +45,7 @@ jobs:
       - name: Run drift check (no drift expected on fresh data)
         id: baseline_drift
         run: |
-          REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
+          REPORT=$(python monitoring/drift_check.py --output-json | tail -1)
           RETRAIN=$(echo $REPORT | python -c "import sys,json; print(json.load(sys.stdin).get('retrain_triggered', False))")
           echo "retrain=$RETRAIN" >> $GITHUB_OUTPUT
           echo "Baseline drift check: retrain=$RETRAIN"
@@ -55,15 +55,22 @@ jobs:
           python - <<'EOF'
           import pandas as pd, numpy as np, os
           df = pd.read_csv("data/processed/train.csv").sample(300, random_state=1).copy()
+          # Shift numeric features significantly
           df["monthlycharges"] = df["monthlycharges"] * 2.5
           df["totalcharges"]   = df["totalcharges"]   * 2.5
-          df["tenure"]         = (df["tenure"] * 0.3).astype(int)
+          df["tenure"]         = (df["tenure"] * 0.2).astype(int)
+          # Shift categorical features too (ensures >15% threshold is met)
+          df["contract"]       = "Month-to-month"
+          df["internetservice"] = "Fiber optic"
+          df["paymentmethod"]  = "Electronic check"
           os.makedirs("data/production", exist_ok=True)
           df.to_csv("data/production/recent_predictions.csv", index=False)
           EOF
-          REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
+          python monitoring/drift_check.py --output-json > /tmp/drift_out.txt
+          REPORT=$(grep '^{' /tmp/drift_out.txt | tail -1)
           DATA_DRIFT=$(echo $REPORT | python -c "import sys,json; print(json.load(sys.stdin).get('dataset_drift', False))")
           echo "Simulated drift detected: $DATA_DRIFT"
+          cat /tmp/drift_out.txt
           [ "$DATA_DRIFT" = "True" ] || (echo "ERROR: Expected data drift to be detected!" && exit 1)
 
       - name: Simulate concept drift and verify detection
@@ -76,9 +83,11 @@ jobs:
           os.makedirs("data/production", exist_ok=True)
           df.to_csv("data/production/recent_predictions.csv", index=False)
           EOF
-          REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
+          python monitoring/drift_check.py --output-json > /tmp/drift_out.txt
+          REPORT=$(grep '^{' /tmp/drift_out.txt | tail -1)
           CONCEPT_DRIFT=$(echo $REPORT | python -c "import sys,json; print(json.load(sys.stdin).get('concept_drift', False))")
           echo "Concept drift detected: $CONCEPT_DRIFT"
+          cat /tmp/drift_out.txt
           [ "$CONCEPT_DRIFT" = "True" ] || (echo "ERROR: Expected concept drift to be detected!" && exit 1)
 
       # ── Docker build + smoke test ─────────────────────────────────────────
@@ -89,7 +98,13 @@ jobs:
       - name: Smoke-test API container
         run: |
           docker run -d -p 8000:8000 --name churn-api-test churn-api:test
-          sleep 8
+          echo "Waiting for API to be ready..."
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:8000/health && echo "API is up!" && break
+            echo "Attempt $i/15 failed, retrying in 2s..."
+            sleep 2
+          done
           curl -f http://localhost:8000/health
+          docker logs churn-api-test
           docker stop churn-api-test
         working-directory: churn-mlops
