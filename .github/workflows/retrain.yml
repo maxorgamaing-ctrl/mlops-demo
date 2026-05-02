@@ -1,4 +1,4 @@
-name: Retrain — Full Pipeline on Drift
+name: Retrain - Full Pipeline on Drift
 
 # Triggered automatically by drift_monitor.yml OR manually from the UI
 on:
@@ -16,6 +16,10 @@ on:
         description: "Was concept drift detected? (true/false)"
         required: false
         default: "unknown"
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   retrain:
@@ -70,8 +74,8 @@ jobs:
         with:
           name: churn-model-${{ github.run_id }}
           path: |
-            models/churn_model.pkl
-            metrics/scores.json
+            churn-mlops/models/churn_model.pkl
+            churn-mlops/metrics/scores.json
 
       # ── Step 7: Promote model and trigger CD ──────────────────────────────
       - name: Promote model + trigger deployment

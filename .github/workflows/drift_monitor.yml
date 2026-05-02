@@ -1,4 +1,4 @@
-name: Drift Monitor — Daily Check + Auto Retrain
+name: Drift Monitor - Daily Check + Auto Retrain
 
 # Runs every day at 02:00 UTC (scheduled)
 # Can also be triggered manually from GitHub Actions UI
@@ -11,6 +11,10 @@ on:
         description: "Inject simulated drift for demo (true/false)"
         required: false
         default: "false"
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   drift-check:
@@ -65,7 +69,6 @@ jobs:
       - name: Run drift detection (data + concept)
         id: drift
         run: |
-          cd churn-mlops 2>/dev/null || true
           REPORT=$(python monitoring/drift_check.py --output-json 2>/dev/null | tail -1)
           echo "report=$REPORT" >> $GITHUB_OUTPUT
           DATA_DRIFT=$(echo $REPORT    | python -c "import sys,json; print(json.load(sys.stdin).get('dataset_drift', False))")
@@ -81,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: drift-report-${{ github.run_id }}
-          path: reports/drift_report_*.json
+          path: churn-mlops/reports/drift_report_*.json
 
       # ── Trigger retraining pipeline if drift detected ─────────────────────
       - name: Trigger retrain workflow (if drift detected)
